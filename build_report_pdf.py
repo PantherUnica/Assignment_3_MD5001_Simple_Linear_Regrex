@@ -31,14 +31,16 @@ story.append(Paragraph(
     "<b>Author:</b> Aditya Raj &nbsp;|&nbsp; <b>Dataset:</b> tv_sales_data.csv "
     "(TV budget in $1,000s, Sales in 1,000s of units, n = 6)<br/>"
     "<b>Model:</b> Sales = &beta;0 + &beta;1 &middot; TV + &epsilon;<br/>"
-    "<b>Method used for reporting:</b> Approach 2 — Gradient Descent (iterative optimization)",
+    "<b>Method:</b> Coefficients fit via Gradient Descent; standard errors, R-squared, and p-values "
+    "computed via the exact simple-linear-regression inference formulas applied to the fit's own "
+    "residuals.",
     styles["Meta"]))
 story.append(Spacer(1, 10))
 
 # --- Section 1 ---
 story.append(Paragraph("1. Code and Method", styles["H2"]))
 story.append(Paragraph(
-    "Approach 2 fits the line by <b>Gradient Descent</b> instead of a closed-form formula: it starts "
+    "The model is fit by <b>Gradient Descent</b> instead of a closed-form formula: it starts "
     "both coefficients at 0, then repeatedly nudges them in the direction that reduces the Mean "
     "Squared Error (MSE), using a learning rate of &alpha; = 0.1 for 1000 iterations. The TV values "
     "are standardized before the loop purely for numerically stable steps, and the learned "
@@ -63,37 +65,36 @@ for i in range(n_iters):
     b0 -= alpha * grad_b0
     b1 -= alpha * grad_b1
 
-gd_beta1 = b1 / x_std
-gd_beta0 = b0 - gd_beta1 * x_mean"""
+beta1 = b1 / x_std
+beta0 = b0 - beta1 * x_mean"""
 story.append(Preformatted(code1, styles["ReportCode"]))
 story.append(Spacer(1, 6))
 
 story.append(Paragraph(
     "Gradient Descent only minimizes MSE — it does not, by itself, produce standard errors, "
-    "R-squared, or p-values. Those are calculated <b>directly from the Gradient Descent "
-    "coefficients and their residuals</b>, using the standard simple-linear-regression "
-    "inference formulas (not copied from an OLS library call):", styles["Body"]))
+    "R-squared, or p-values. Those are calculated <b>directly from the fitted line's own "
+    "residuals</b>, using the exact simple-linear-regression inference formulas:", styles["Body"]))
 
 code2 = """from scipy import stats
 
-y_fit_gd = gd_beta0 + gd_beta1 * x
-resid_gd = y_vals - y_fit_gd
+y_fit = beta0 + beta1 * x
+residuals = y_vals - y_fit
 
-RSS_gd = np.sum(resid_gd ** 2)
-TSS_gd = np.sum((y_vals - y_vals.mean()) ** 2)
+RSS = np.sum(residuals ** 2)
+TSS = np.sum((y_vals - y_vals.mean()) ** 2)
 df_resid = n - 2
-sigma2_gd = RSS_gd / df_resid
+sigma2 = RSS / df_resid
 Sxx = np.sum((x - x_mean) ** 2)
 
-se_gd_beta0 = np.sqrt(sigma2_gd * (1 / n + x_mean ** 2 / Sxx))
-se_gd_beta1 = np.sqrt(sigma2_gd / Sxx)
+se_beta0 = np.sqrt(sigma2 * (1 / n + x_mean ** 2 / Sxx))
+se_beta1 = np.sqrt(sigma2 / Sxx)
 
-t_gd_beta0 = gd_beta0 / se_gd_beta0
-t_gd_beta1 = gd_beta1 / se_gd_beta1
-p_gd_beta0 = 2 * (1 - stats.t.cdf(abs(t_gd_beta0), df_resid))
-p_gd_beta1 = 2 * (1 - stats.t.cdf(abs(t_gd_beta1), df_resid))
+t_beta0 = beta0 / se_beta0
+t_beta1 = beta1 / se_beta1
+p_beta0 = 2 * (1 - stats.t.cdf(abs(t_beta0), df_resid))
+p_beta1 = 2 * (1 - stats.t.cdf(abs(t_beta1), df_resid))
 
-r_squared_gd = 1 - RSS_gd / TSS_gd"""
+r_squared = 1 - RSS / TSS"""
 story.append(Preformatted(code2, styles["ReportCode"]))
 story.append(Spacer(1, 6))
 
@@ -121,7 +122,7 @@ story.append(t)
 story.append(Spacer(1, 12))
 
 # --- Section 2 ---
-story.append(Paragraph("2. Results (Approach 2 — Gradient Descent)", styles["H2"]))
+story.append(Paragraph("2. Results", styles["H2"]))
 results_data = [
     ["Quantity", "Value"],
     ["beta0 (intercept)", "3.6000"],
@@ -150,26 +151,16 @@ t2.setStyle(TableStyle([
 story.append(t2)
 story.append(Spacer(1, 8))
 story.append(Paragraph("Fitted equation: <b>Sales = 3.60 + 0.5657 x TV</b>", styles["Body"]))
-story.append(Spacer(1, 6))
-
-story.append(Paragraph(
-    "<b>Note on method:</b> Gradient Descent converges to the same coefficients as the closed-form "
-    "OLS solution (expected — both minimize the identical squared-error cost function; OLS just "
-    "solves for the minimum in one step instead of approaching it iteratively). Because the fitted "
-    "line is identical, the residuals — and therefore SE, R-squared, and the p-values computed "
-    "above — come out identical too. This agreement is a useful sanity check that the Gradient "
-    "Descent implementation converged correctly.", styles["ReportNote"]))
 story.append(Spacer(1, 10))
 
 story.append(Paragraph("Fit and residuals:", styles["Body"]))
 story.append(Image("regression_plot.png", width=6.3*inch, height=6.3*inch*(5/12)))
 story.append(Spacer(1, 8))
-story.append(Paragraph("Gradient Descent cost convergence and fit comparison:", styles["Body"]))
-story.append(Image("gradient_descent_plot.png", width=6.3*inch, height=6.3*inch*(5/12)))
+story.append(Paragraph("Gradient Descent cost convergence:", styles["Body"]))
+story.append(Image("gradient_descent_plot.png", width=4.2*inch, height=4.2*inch*(5/6)))
 story.append(Paragraph(
-    "The left panel shows MSE falling smoothly toward its minimum over 1,000 iterations — this is "
-    "Gradient Descent arriving at the same answer OLS reaches in one step. The right panel confirms "
-    "the OLS and Gradient Descent fitted lines overlap almost exactly.", styles["Body"]))
+    "The MSE falls smoothly toward its minimum over 1,000 iterations, confirming the model "
+    "converged to a stable fit rather than stopping early or diverging.", styles["Body"]))
 story.append(Spacer(1, 10))
 
 # --- Section 3 ---
@@ -227,19 +218,6 @@ prof_points = [
 ]
 for p in prof_points:
     story.append(Paragraph("&bull; " + p, styles["ReportBullet"]))
-story.append(Spacer(1, 8))
-
-# --- Section 5 ---
-story.append(Paragraph("5. Note on Methodology (Approach 1 vs. Approach 2)", styles["H2"]))
-story.append(Paragraph(
-    "This report's primary numbers are computed under Approach 2 (Gradient Descent), per the "
-    "assignment's focus, with standard errors, R-squared, and p-values derived from Gradient "
-    "Descent's own fitted residuals rather than reused from a library's OLS output. As a "
-    "cross-check, Approach 1 (closed-form OLS, via statsmodels) was also fit on the same data "
-    "and produced numerically identical coefficients and inference statistics "
-    "(beta0 = 3.6000, beta1 = 0.5657, R-squared = 0.9895), which is expected since both methods "
-    "minimize the same least-squares objective — Gradient Descent simply reaches that minimum "
-    "iteratively instead of in one closed-form step.", styles["Body"]))
 
 doc.build(story)
 print("Wrote Assignment1_Report.pdf")
